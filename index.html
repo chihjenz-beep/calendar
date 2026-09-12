@@ -182,6 +182,11 @@ body{
       <div class="days" id="daysGrid"></div>
     </div>
     <div class="todo-col">
+      <div id="addWrap">
+        <button class="addbtn" onclick="openForm()">
+          <span class="pc"><i class="ti ti-plus"></i></span>新增代辦
+        </button>
+      </div>
       <div class="catlegend" id="catLegend"></div>
       <div class="tdhead">
         <div class="dateplate">
@@ -195,11 +200,6 @@ body{
       </div>
       <div id="tdList"></div>
       <div class="hint" id="opHint">點一下事項可編輯內容；長按事項可搬移到其他日期</div>
-      <div id="addWrap">
-        <button class="addbtn" onclick="openForm()">
-          <span class="pc"><i class="ti ti-plus"></i></span>新增代辦
-        </button>
-      </div>
       <div class="fbox hidden" id="fbox">
         <div class="fhead">
           <span class="ftit" id="formTitle">新增代辦事項</span>
