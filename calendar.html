@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -228,8 +230,21 @@ body{
 </div>
 
 <script>
-const GAS='https://script.google.com/macros/s/AKfycbwjKQ9gsg9qmP31fEZPrGbQwUIMquHpwrQWyPLkXLoteSukA0WdpyCterM1Lx1df2H_rw/exec';
-const LSK='cal-todo-gas-v4';
+/* ====== Firebase 設定（Realtime Database） ====== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCNEsvoZABXNFNnLMBEJ8RGRP50XznJ5Qw",
+  authDomain: "housekeeping-3bb3e.firebaseapp.com",
+  databaseURL: "https://housekeeping-3bb3e-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "housekeeping-3bb3e",
+  storageBucket: "housekeeping-3bb3e.firebasestorage.app",
+  messagingSenderId: "431448102839",
+  appId: "1:431448102839:web:f79df318e921a32ac4ba32"
+};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const todosRef=db.ref('todos');
+
+const LSK='cal-todo-fb-v1';
 const CATS={
   medical:{label:'醫療',icon:'ti-stethoscope',color:'var(--c-medical)'},
   house:{label:'家務',icon:'ti-checklist',color:'var(--c-house)'},
@@ -263,19 +278,6 @@ function sbar(msg,cls){
   el.textContent=msg;el.className='sbar'+(cls?' '+cls:'');
 }
 
-function jsonp(params){
-  return new Promise((resolve,reject)=>{
-    const cbName='_cb'+Date.now()+'_'+Math.floor(Math.random()*9999);
-    const timer=setTimeout(()=>{delete window[cbName];reject(new Error('timeout'));},15000);
-    window[cbName]=function(data){clearTimeout(timer);delete window[cbName];resolve(data);};
-    const qs=Object.entries({...params,callback:cbName}).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
-    const s=document.createElement('script');
-    s.src=GAS+'?'+qs;
-    s.onerror=()=>{clearTimeout(timer);delete window[cbName];reject(new Error('script error'));};
-    document.head.appendChild(s);
-    setTimeout(()=>{if(s.parentNode)s.parentNode.removeChild(s);},20000);
-  });
-}
 
 function buildLegend(){
   const wrap=document.getElementById('catLegend');wrap.innerHTML='';
@@ -300,18 +302,22 @@ function buildCatGrid(){
   });
 }
 
-async function load(){
+function load(){
   lsLoad();normalizeAll();render();
-  sbar('連線 Google Sheet 中…');
-  try{
-    const res=await jsonp({action:'getAll'});
-    if(res.ok){
-      items=res.items.map(i=>({...i,done:i.done===true||i.done==='TRUE'||i.done==='true'}));
-      normalizeAll();
-      lsSave();render();sbar('');
-    }else{sbar('Sheet 讀取失敗：'+res.error,'err');}
-  }catch(e){sbar('網路錯誤，顯示本機快取','err');}
-  await importSeedOnce();
+  sbar('連線 Firebase 中…');
+  todosRef.on('value',snap=>{
+    const val=snap.val()||{};
+    items=Object.keys(val).map(id=>{
+      const v=val[id];
+      return {id,title:v.title,date:v.date,done:!!v.done,color:v.color};
+    });
+    normalizeAll();
+    lsSave();render();sbar('');
+    importSeedOnce();
+  },err=>{
+    console.error(err);
+    sbar('連線 Firebase 失敗，顯示本機快取','err');
+  });
 }
 function normalizeAll(){items.forEach(e=>{e.color=normCat(e.color);});}
 
@@ -367,11 +373,9 @@ async function pushUpdate(id,patch){
   lsSave();render();
   sbar('同步中…');
   try{
-    const payload={action:'update',id};
-    Object.entries(patch).forEach(([k,v])=>{payload[k]=typeof v==='boolean'?String(v):v;});
-    const res=await jsonp(payload);
-    sbar(res&&res.ok?'已同步 ✓':'同步失敗：'+((res&&res.error)||''),(res&&res.ok)?'ok':'err');
-  }catch(e){sbar('網路錯誤，已更新本機資料','err');}
+    await todosRef.child(id).update(patch);
+    sbar('已同步 ✓','ok');
+  }catch(e){sbar('同步失敗：'+e.message,'err');}
   setTimeout(()=>sbar(''),3000);
 }
 
@@ -490,7 +494,7 @@ async function toggleDone(id){
 
 async function delItem(id){
   items=items.filter(e=>e.id!==id);lsSave();render();
-  try{await jsonp({action:'delete',id});}
+  try{await todosRef.child(id).remove();}
   catch(e){sbar('同步失敗','err');}
 }
 
@@ -550,16 +554,16 @@ async function saveItem(){
     return;
   }
 
-  const id=String(Date.now());
+  const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,6);
   items.push({id,title,date,done:false,color:sc});
   lsSave();
   closeForm();render();
-  sbar('寫入 Sheet 中…');
+  sbar('寫入 Firebase 中…');
   document.getElementById('bsav').disabled=true;
   try{
-    const res=await jsonp({action:'save',id,title,date,done:'false',color:sc});
-    sbar(res.ok?'已同步至 Google Sheet ✓':'寫入失敗：'+(res.error||''),res.ok?'ok':'err');
-  }catch(e){sbar('網路錯誤，資料暫存本機','err');}
+    await todosRef.child(id).set({title,date,done:false,color:sc});
+    sbar('已同步至 Firebase ✓','ok');
+  }catch(e){sbar('寫入失敗：'+e.message,'err');}
   setTimeout(()=>sbar(''),3500);
 }
 
@@ -587,20 +591,23 @@ const SEED_ITEMS=[
   {date:'2026-12-12',title:'布袋音樂節 11:00–20:30（暫定）',color:'work'},
   {date:'2026-12-13',title:'布袋音樂節 09:00–19:00',color:'work'}
 ];
+let seeding=false;
 async function importSeedOnce(){
   const FLAG='seedImported_v1';
-  if(localStorage.getItem(FLAG))return;
+  if(localStorage.getItem(FLAG)||seeding)return;
   const toAdd=SEED_ITEMS.filter(s=>!items.some(e=>e.date===s.date&&e.title===s.title));
   if(!toAdd.length){localStorage.setItem(FLAG,'1');return;}
+  seeding=true;
   sbar('匯入團練與音樂節行程中…');
   for(const s of toAdd){
     const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
     items.push({id,title:s.title,date:s.date,done:false,color:s.color});
     lsSave();
-    try{await jsonp({action:'save',id,title:s.title,date:s.date,done:'false',color:s.color});}
+    try{await todosRef.child(id).set({title:s.title,date:s.date,done:false,color:s.color});}
     catch(e){/* 略過失敗項目，之後可手動重新新增 */}
   }
   localStorage.setItem(FLAG,'1');
+  seeding=false;
   render();
   sbar('已匯入 '+toAdd.length+' 筆行程 ✓','ok');
   setTimeout(()=>sbar(''),4000);
