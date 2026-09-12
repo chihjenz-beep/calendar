@@ -308,6 +308,7 @@ async function load(){
       lsSave();render();sbar('');
     }else{sbar('Sheet 讀取失敗：'+res.error,'err');}
   }catch(e){sbar('網路錯誤，顯示本機快取','err');}
+  await importSeedOnce();
 }
 function normalizeAll(){items.forEach(e=>{e.color=normCat(e.color);});}
 
@@ -558,6 +559,46 @@ async function saveItem(){
 
 function chM(d){cur=new Date(cur.getFullYear(),cur.getMonth()+d,1);closeForm();render();}
 function goToday(){cur=new Date(td.getFullYear(),td.getMonth(),1);sel=new Date(td.getFullYear(),td.getMonth(),td.getDate());closeForm();render();}
+
+/* 從團練/音樂節行程表匯入（假設年份為2026） */
+const SEED_ITEMS=[
+  {date:'2026-09-05',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-12',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-19',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-25',title:'團練（連假調整）09:00–12:00・中秋連假',color:'work'},
+  {date:'2026-10-03',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-17',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-31',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-09',title:'團練（連假調整）09:00–12:00・雙十連假',color:'work'},
+  {date:'2026-10-24',title:'團練（連假調整）09:00–12:00・光復節連假',color:'work'},
+  {date:'2026-11-07',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-14',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-21',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-28',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-12-05',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-12-06',title:'大合奏（全鎮中/小學預彩排）',color:'work'},
+  {date:'2026-12-11',title:'音樂節彩排（時間未定）',color:'work'},
+  {date:'2026-12-12',title:'布袋音樂節 11:00–20:30（暫定）',color:'work'},
+  {date:'2026-12-13',title:'布袋音樂節 09:00–19:00',color:'work'}
+];
+async function importSeedOnce(){
+  const FLAG='seedImported_v1';
+  if(localStorage.getItem(FLAG))return;
+  const toAdd=SEED_ITEMS.filter(s=>!items.some(e=>e.date===s.date&&e.title===s.title));
+  if(!toAdd.length){localStorage.setItem(FLAG,'1');return;}
+  sbar('匯入團練與音樂節行程中…');
+  for(const s of toAdd){
+    const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
+    items.push({id,title:s.title,date:s.date,done:false,color:s.color});
+    lsSave();
+    try{await jsonp({action:'save',id,title:s.title,date:s.date,done:'false',color:s.color});}
+    catch(e){/* 略過失敗項目，之後可手動重新新增 */}
+  }
+  localStorage.setItem(FLAG,'1');
+  render();
+  sbar('已匯入 '+toAdd.length+' 筆行程 ✓','ok');
+  setTimeout(()=>sbar(''),4000);
+}
 
 buildLegend();
 load();
