@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -33,7 +34,7 @@ body{
   box-shadow:0 0 0 1px rgba(56,225,242,.10),0 24px 70px rgba(0,0,0,.55),0 0 60px -20px rgba(56,225,242,.12);position:relative}
 
 /* masthead */
-.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:1.1rem 1.5rem .85rem;background:var(--w-sur);backdrop-filter:blur(18px);position:relative}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:1.1rem 1.5rem .85rem;background:var(--w-sur);backdrop-filter:blur(18px);position:relative}
 .topbar::before,.topbar::after{content:'';position:absolute;top:9px;width:13px;height:13px;border-top:2px solid var(--w-ac);opacity:.55}
 .topbar::before{left:9px;border-left:2px solid var(--w-ac)}
 .topbar::after{right:9px;border-right:2px solid var(--w-ac)}
@@ -48,7 +49,10 @@ body{
 .nbtn:hover{background:var(--w-al);border-color:var(--w-ac);color:var(--w-at)}
 .tpill{height:30px;padding:0 13px;border-radius:15px;border:1px solid var(--w-bd);background:var(--w-card);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:500;color:var(--w-mid);transition:background .13s,border-color .13s,color .13s}
 .tpill:hover{background:var(--w-al);border-color:var(--w-ac);color:var(--w-at)}
-.mast-right{display:flex;align-items:center;gap:8px}
+.mast-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.addpill{height:30px;padding:0 14px;border-radius:15px;border:1px solid var(--w-ac);background:var(--w-ac);color:#04161A;cursor:pointer;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;box-shadow:0 0 14px -4px var(--w-ac);transition:opacity .13s}
+.addpill:hover{opacity:.86}
+.addpill i{font-size:13px}
 .rule-thick{height:1px;background:linear-gradient(90deg,transparent,var(--w-ac),transparent);opacity:.4}
 .rule-thin{height:1px;background:var(--w-bs)}
 
@@ -164,7 +168,11 @@ body{
       </div>
     </div>
     <div class="mast-right">
+      <button class="addpill" onclick="openForm()"><i class="ti ti-plus"></i>新增代辦</button>
       <button class="tpill" onclick="goToday()">今天</button>
+      <button class="nbtn" onclick="exportXlsx()" title="匯出 XLSX" aria-label="匯出 XLSX"><i class="ti ti-file-export"></i></button>
+      <button class="nbtn" onclick="triggerImport()" title="匯入 XLSX" aria-label="匯入 XLSX"><i class="ti ti-file-import"></i></button>
+      <input type="file" id="xlsxFile" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(event)">
       <div class="nav-grp">
         <button class="nbtn" onclick="chM(-1)" aria-label="上個月"><i class="ti ti-chevron-left"></i></button>
         <button class="nbtn" onclick="chM(1)" aria-label="下個月"><i class="ti ti-chevron-right"></i></button>
@@ -199,11 +207,6 @@ body{
       </div>
       <div id="tdList"></div>
       <div class="hint" id="opHint">點一下事項可編輯內容；長按事項可搬移到其他日期</div>
-      <div id="addWrap">
-        <button class="addbtn" onclick="openForm()">
-          <span class="pc"><i class="ti ti-plus"></i></span>新增代辦
-        </button>
-      </div>
       <div class="fboxBackdrop hidden" id="fboxBackdrop" onclick="closeForm()"></div>
       <div class="fbox hidden" id="fbox">
         <div class="fhead">
@@ -508,7 +511,6 @@ function openForm(){
   document.getElementById('bsav').disabled=false;
   sc='family';
   buildCatGrid();
-  document.getElementById('addWrap').style.display='none';
   document.getElementById('fboxBackdrop').classList.remove('hidden');
   document.getElementById('fbox').classList.remove('hidden');
   setTimeout(()=>document.getElementById('fTitle').focus(),50);
@@ -523,7 +525,6 @@ function openEdit(id){
   document.getElementById('bsav').disabled=false;
   sc=it.color;
   buildCatGrid();
-  document.getElementById('addWrap').style.display='none';
   document.getElementById('fboxBackdrop').classList.remove('hidden');
   document.getElementById('fbox').classList.remove('hidden');
   setTimeout(()=>document.getElementById('fTitle').focus(),50);
@@ -531,7 +532,6 @@ function openEdit(id){
 function closeForm(){
   document.getElementById('fboxBackdrop').classList.add('hidden');
   document.getElementById('fbox').classList.add('hidden');
-  document.getElementById('addWrap').style.display='';
   editingId=null;
 }
 function pickCat(el){
@@ -565,6 +565,93 @@ async function saveItem(){
     sbar('已同步至 Firebase ✓','ok');
   }catch(e){sbar('寫入失敗：'+e.message,'err');}
   setTimeout(()=>sbar(''),3500);
+}
+
+/* ====== XLSX 匯出／匯入 ====== */
+function exportXlsx(){
+  if(!items.length){sbar('目前沒有可匯出的代辦事項','err');setTimeout(()=>sbar(''),3000);return;}
+  const rows=items.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.title.localeCompare(b.title)).map(e=>({
+    '日期':e.date,
+    '內容':e.title,
+    '分類':(CATS[e.color]||CATS.other).label,
+    '狀態':e.done?'已完成':'未完成'
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows,{header:['日期','內容','分類','狀態']});
+  ws['!cols']=[{wch:12},{wch:42},{wch:10},{wch:10}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'代辦事項');
+  const now=new Date();
+  const fname='代辦事項_'+now.getFullYear()+p2(now.getMonth()+1)+p2(now.getDate())+'.xlsx';
+  try{
+    XLSX.writeFile(wb,fname);
+    sbar('已匯出 XLSX ✓','ok');
+  }catch(e){sbar('匯出失敗：'+e.message,'err');}
+  setTimeout(()=>sbar(''),3500);
+}
+
+function triggerImport(){
+  document.getElementById('xlsxFile').click();
+}
+
+function parseImportedDate(v){
+  if(v===''||v===undefined||v===null)return null;
+  if(typeof v==='number'){
+    if(window.XLSX&&XLSX.SSF&&XLSX.SSF.parse_date_code){
+      const d=XLSX.SSF.parse_date_code(v);
+      if(d)return d.y+'-'+p2(d.m)+'-'+p2(d.d);
+    }
+    return null;
+  }
+  const s=String(v).trim();
+  let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(m)return m[1]+'-'+p2(+m[2])+'-'+p2(+m[3]);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if(m)return m[3]+'-'+p2(+m[1])+'-'+p2(+m[2]);
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime()))return fd(dt);
+  return null;
+}
+
+async function handleImportFile(evt){
+  const file=evt.target.files[0];
+  evt.target.value='';
+  if(!file)return;
+  sbar('讀取 XLSX 中…');
+  let rows;
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:false});
+    const wsname=wb.SheetNames[0];
+    rows=XLSX.utils.sheet_to_json(wb.Sheets[wsname],{defval:''});
+  }catch(e){
+    sbar('匯入失敗：檔案格式錯誤','err');setTimeout(()=>sbar(''),4000);return;
+  }
+  if(!rows||!rows.length){sbar('檔案內沒有可匯入的資料','err');setTimeout(()=>sbar(''),4000);return;}
+
+  const labelToKey={};
+  CATORDER.forEach(k=>{labelToKey[CATS[k].label]=k;});
+
+  let added=0,skipped=0;
+  for(const r of rows){
+    const rawDate=r['日期']!==undefined?r['日期']:r['date'];
+    const dateStr=parseImportedDate(rawDate);
+    const title=String(r['內容']!==undefined?r['內容']:(r['title']!==undefined?r['title']:'')).trim();
+    if(!dateStr||!title){skipped++;continue;}
+    const catRaw=String(r['分類']!==undefined?r['分類']:(r['category']!==undefined?r['category']:'')).trim();
+    const color=labelToKey[catRaw]||normCat(catRaw);
+    const statusRaw=String(r['狀態']!==undefined?r['狀態']:(r['status']!==undefined?r['status']:'')).trim();
+    const done=statusRaw==='已完成'||/^true$/i.test(statusRaw)||statusRaw==='1'||/^done$/i.test(statusRaw);
+    if(items.some(e=>e.date===dateStr&&e.title===title&&e.color===color)){skipped++;continue;}
+    const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
+    items.push({id,title,date:dateStr,done,color});
+    lsSave();
+    try{await todosRef.child(id).set({title,date:dateStr,done,color});}
+    catch(e){/* 個別項目同步失敗，稍後可重試 */}
+    added++;
+  }
+  render();
+  sbar('已匯入 '+added+' 筆'+(skipped?'（略過 '+skipped+' 筆）':'')+' ✓','ok');
+  setTimeout(()=>sbar(''),4000);
 }
 
 function chM(d){cur=new Date(cur.getFullYear(),cur.getMonth()+d,1);closeForm();render();}
