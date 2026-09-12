@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平安家園 代辦行事曆</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --w-bg:#090C13;--w-sur:rgba(20,27,41,.72);--w-card:rgba(17,23,35,.80);
+  --w-bd:#26314A;--w-bs:#1B2437;
+  --w-tx:#E9EEFA;--w-mid:#8C9AB8;--w-soft:#54607F;
+  --w-ac:#38E1F2;--w-al:rgba(56,225,242,.10);--w-at:#B9F5FC;
+  --w-tod:#38E1F2;--w-sel:rgba(123,97,255,.16);--w-done:#3A4560;
+  --w-danger:#FF3B60;--w-ok:#34E89E;
+  --c-medical:#FF4D6D;--c-house:#34E89E;--c-work:#4DA3FF;--c-family:#FFC24D;--c-other:#B98CFF;
+}
+html,body{height:100%;font-family:'Noto Sans TC','Space Grotesk',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+body{
+  display:flex;align-items:flex-start;justify-content:center;padding:1.5rem 1rem 3rem;
+  background-color:var(--w-bg);
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,.05) 1px, transparent 0);
+  background-size:24px 24px;
+}
+.outer{width:100%;max-width:900px;background:linear-gradient(165deg,#0E1422,#0A0E17);border-radius:16px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(56,225,242,.10),0 24px 70px rgba(0,0,0,.55),0 0 60px -20px rgba(56,225,242,.12);position:relative}
+
+/* masthead */
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:1.1rem 1.5rem .85rem;background:var(--w-sur);backdrop-filter:blur(18px);position:relative}
+.topbar::before,.topbar::after{content:'';position:absolute;top:9px;width:13px;height:13px;border-top:2px solid var(--w-ac);opacity:.55}
+.topbar::before{left:9px;border-left:2px solid var(--w-ac)}
+.topbar::after{right:9px;border-right:2px solid var(--w-ac)}
+.mast-left{display:flex;flex-direction:column;gap:4px}
+.mast-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--w-ac);letter-spacing:1.5px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.mast-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--w-ac);box-shadow:0 0 8px var(--w-ac);flex-shrink:0}
+.mast-title{display:flex;align-items:baseline;gap:2px}
+.mlabel{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;color:var(--w-tx);letter-spacing:.3px;text-shadow:0 0 22px rgba(56,225,242,.28)}
+.msubtitle{font-size:12px;color:var(--w-soft);margin-left:9px;font-weight:400;white-space:nowrap;align-self:baseline}
+.nav-grp{display:flex;gap:4px}
+.nbtn{width:32px;height:32px;border-radius:50%;border:1px solid var(--w-bd);background:var(--w-card);cursor:pointer;color:var(--w-mid);display:flex;align-items:center;justify-content:center;font-size:15px;transition:background .13s,border-color .13s,color .13s}
+.nbtn:hover{background:var(--w-al);border-color:var(--w-ac);color:var(--w-at)}
+.tpill{height:30px;padding:0 13px;border-radius:15px;border:1px solid var(--w-bd);background:var(--w-card);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:500;color:var(--w-mid);transition:background .13s,border-color .13s,color .13s}
+.tpill:hover{background:var(--w-al);border-color:var(--w-ac);color:var(--w-at)}
+.mast-right{display:flex;align-items:center;gap:8px}
+.rule-thick{height:1px;background:linear-gradient(90deg,transparent,var(--w-ac),transparent);opacity:.4}
+.rule-thin{height:1px;background:var(--w-bs)}
+
+.split{display:flex;align-items:flex-start}
+.cal-col{flex:0 0 330px;padding:.9rem .9rem 1rem;background:var(--w-sur);backdrop-filter:blur(18px);border-right:1px solid var(--w-bs)}
+.wrow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:3px}
+.wl{text-align:center;font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:500;color:var(--w-soft);padding:5px 0;letter-spacing:.3px}
+.wl:first-child{color:var(--c-medical)}.wl:last-child{color:var(--c-work)}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dc{display:flex;flex-direction:column;align-items:center;padding:5px 2px;cursor:pointer;border-radius:10px;min-height:54px;transition:background .12s}
+.dc:hover{background:var(--w-al)}
+.dn{font-family:'JetBrains Mono',monospace;font-size:13.5px;color:var(--w-tx);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0;transition:box-shadow .15s}
+.dc.om .dn{color:var(--w-soft);opacity:.35}
+.dc.sun:not(.om) .dn{color:var(--c-medical)}
+.dc.sat:not(.om) .dn{color:var(--c-work)}
+.dc.tod .dn{background:var(--w-tod);color:#04161A;font-weight:700;box-shadow:0 0 16px rgba(56,225,242,.7)}
+.dc.sel:not(.tod) .dn{background:var(--w-sel);color:var(--w-at);font-weight:600;box-shadow:inset 0 0 0 1px rgba(123,97,255,.55)}
+.dotrow{display:flex;gap:3px;justify-content:center;margin-top:3px;height:6px}
+.dot{width:5px;height:5px;border-radius:50%;box-shadow:0 0 4px rgba(255,255,255,.4)}
+.dot.faint{opacity:.3;box-shadow:none}
+
+/* 搬移模式 */
+@keyframes pulseGlow{0%,100%{box-shadow:inset 0 0 0 1px var(--w-ac),0 0 14px -6px var(--w-ac)}50%{box-shadow:inset 0 0 0 1px var(--w-ac),0 0 26px -4px var(--w-ac)}}
+.cal-col.movemode{border-radius:0;animation:pulseGlow 1.8s ease-in-out infinite}
+.movebar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--w-al);border:1px solid var(--w-ac);color:var(--w-at);font-size:12px;padding:7px 10px;border-radius:10px;margin-bottom:8px;box-shadow:0 0 14px -4px var(--w-ac)}
+.movebar.hidden{display:none}
+.movebar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.movecancel{border:none;background:transparent;color:var(--w-ac);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0}
+
+/* category legend */
+.catlegend{display:flex;flex-wrap:wrap;gap:11px;padding:0 2px 10px;border-bottom:1px solid var(--w-bs);margin-bottom:2px}
+.catchip{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--w-mid)}
+.catchip i{font-size:12px}
+
+.todo-col{flex:1;min-width:0;padding:1.1rem 1.25rem 1rem;display:flex;flex-direction:column;gap:.8rem;position:relative}
+.tdhead{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:6px 10px}
+.dateplate{display:flex;align-items:baseline;gap:11px}
+.dnum{font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:var(--w-tx);line-height:1;text-shadow:0 0 18px rgba(56,225,242,.35)}
+.dmeta{display:flex;flex-direction:column;line-height:1.35}
+.dmonth{font-size:13px;color:var(--w-tx);font-weight:600}
+.dweek{font-size:11.5px;color:var(--w-soft)}
+.tdbadge{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--w-mid);background:var(--w-card);border:1px solid var(--w-bd);padding:3px 11px;border-radius:10px;white-space:nowrap}
+
+#tdList{display:flex;flex-direction:column;gap:12px}
+.tsec{display:flex;flex-direction:column;gap:6px;border-left:3px solid transparent;padding-left:0;margin-left:0;transition:border-color .15s}
+.tsec.active{border-left-color:var(--w-ac);padding-left:9px;margin-left:-9px}
+.tsechead{display:flex;align-items:baseline;gap:7px}
+.tsechead .lbl{font-size:12.5px;font-weight:600;color:var(--w-tx)}
+.tsec.active .tsechead .lbl{color:var(--w-at)}
+.tsechead .cnt{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--w-soft);margin-left:auto}
+.tsecbody{display:flex;flex-direction:column;gap:6px}
+.tcicon{margin-right:5px;font-size:12px}
+.empty.small{padding:.35rem 0;font-size:12px;color:var(--w-soft);text-align:left}
+
+.titem{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;border:1px solid var(--w-bs);background:var(--w-card);backdrop-filter:blur(10px);transition:border-color .15s}
+.titem.done{opacity:.45}
+.tchk{width:21px;height:21px;border-radius:50%;border:1.5px solid var(--w-bd);background:var(--w-sur);cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:background .12s,border-color .12s,color .12s,box-shadow .12s}
+.titem.done .tchk{background:var(--bar);border-color:var(--bar);color:#04161A;box-shadow:0 0 10px var(--bar)}
+.tchk:hover{border-color:var(--bar)}
+.ttxt{flex:1;font-size:14px;color:var(--w-tx);min-width:0;word-break:break-all;border-left:2.5px solid var(--bar);padding-left:8px;line-height:1.4;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:manipulation;border-radius:4px;transition:transform .12s,background .12s;box-shadow:-8px 0 14px -10px var(--bar)}
+.ttxt.holding{transform:scale(.97);background:var(--w-al)}
+.titem.done .ttxt{text-decoration:line-through;color:var(--w-soft)}
+.titem.moving{outline:2px dashed var(--w-ac);outline-offset:1px;box-shadow:0 0 14px -4px var(--w-ac)}
+.tdel{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:none;background:transparent;cursor:pointer;color:var(--w-mid);font-size:16px;flex-shrink:0;transition:background .13s,color .13s}
+.tdel:hover{background:var(--w-danger);color:#fff}
+.empty{padding:1.5rem 0;text-align:center;color:var(--w-soft);font-size:13px}
+.hint{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--w-soft);text-align:center;letter-spacing:.2px}
+.ei{font-size:22px;display:block;margin-bottom:5px}
+.addbtn{width:100%;padding:9px 13px;border-radius:11px;border:1px dashed var(--w-bd);background:var(--w-sur);cursor:pointer;font-size:13px;color:var(--w-mid);display:flex;align-items:center;gap:9px;transition:border-color .13s,background .13s,color .13s}
+.addbtn:hover{border-color:var(--w-ac);background:var(--w-al);color:var(--w-at)}
+.pc{width:24px;height:24px;border-radius:50%;background:var(--w-ac);color:#04161A;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;box-shadow:0 0 10px rgba(56,225,242,.6)}
+.fboxBackdrop{position:absolute;inset:0;background:rgba(5,8,14,.62);backdrop-filter:blur(3px);z-index:15}
+.fboxBackdrop.hidden{display:none}
+.fbox{position:absolute;top:0;left:0;right:0;z-index:20;background:var(--w-card);backdrop-filter:blur(18px);border:1px solid var(--w-bd);border-radius:12px;overflow:hidden;box-shadow:0 12px 40px -8px rgba(0,0,0,.6),0 0 26px -8px rgba(56,225,242,.25)}
+.fbox.hidden{display:none}
+.fhead{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid var(--w-bs);background:var(--w-sur)}
+.ftit{font-size:14px;font-weight:600;color:var(--w-tx)}
+.fclose{width:26px;height:26px;border-radius:50%;border:1px solid var(--w-bd);background:var(--w-bg);cursor:pointer;color:var(--w-mid);display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .13s}
+.fclose:hover{background:var(--w-al);border-color:var(--w-ac);color:var(--w-at)}
+.fbody{padding:13px 14px;display:flex;flex-direction:column;gap:10px}
+.flabel{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:var(--w-soft);margin-bottom:4px;display:block;letter-spacing:.6px;text-transform:uppercase}
+.finput{width:100%;padding:8px 10px;border:1px solid var(--w-bs);border-radius:8px;background:var(--w-sur);color:var(--w-tx);font-size:14px;font-family:inherit;transition:border-color .15s,box-shadow .15s}
+.finput:focus{outline:none;border-color:var(--w-ac);box-shadow:0 0 0 3px var(--w-al)}
+.catgrid{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+.catopt{--cc:#8C7A68;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;border:1.5px solid var(--cc);background:var(--w-sur);font-size:12.5px;font-family:inherit;color:var(--cc);cursor:pointer;transition:background .12s,color .12s,box-shadow .12s}
+.catopt i{font-size:13px}
+.catopt.on{background:var(--cc);color:#04161A;box-shadow:0 0 12px -2px var(--cc)}
+.ffoot{padding:10px 14px;border-top:1px solid var(--w-bs);background:var(--w-sur);display:flex;gap:8px;align-items:center}
+.bcnl{flex:1;padding:8px;border:1px solid var(--w-bd);border-radius:8px;background:var(--w-bg);cursor:pointer;font-size:13px;color:var(--w-mid);transition:background .13s}
+.bcnl:hover{background:var(--w-al)}
+.bsav{flex:2;padding:8px;border:none;border-radius:8px;background:var(--w-ac);cursor:pointer;font-size:13px;color:#04161A;font-weight:700;transition:opacity .13s,box-shadow .13s;box-shadow:0 0 14px -4px var(--w-ac)}
+.bsav:hover{opacity:.88}.bsav:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.smsg{font-size:11px;color:var(--w-soft);min-width:48px;text-align:right}
+.sbar{font-family:'JetBrains Mono',monospace;font-size:10.5px;text-align:center;padding:5px 0;min-height:20px;color:var(--w-soft)}
+.sbar.err{color:var(--w-danger)}.sbar.ok{color:var(--w-ok)}
+@media(max-width:640px){
+  body{padding:.75rem .5rem 2rem}
+  .split{flex-direction:column}
+  .cal-col{flex:none;width:100%;border-right:none;border-bottom:1px solid var(--w-bs)}
+  .todo-col{padding:.9rem 1rem 1rem}
+  .mlabel{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="topbar">
+    <div class="mast-left">
+      <span class="mast-eyebrow">岱江里C據點</span>
+      <div class="mast-title">
+        <span class="mlabel" id="calTitle"></span>
+        <span class="msubtitle">行事曆與代辦事項</span>
+      </div>
+    </div>
+    <div class="mast-right">
+      <button class="tpill" onclick="goToday()">今天</button>
+      <div class="nav-grp">
+        <button class="nbtn" onclick="chM(-1)" aria-label="上個月"><i class="ti ti-chevron-left"></i></button>
+        <button class="nbtn" onclick="chM(1)" aria-label="下個月"><i class="ti ti-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+  <div class="rule-thick"></div>
+  <div class="rule-thin"></div>
+  <div class="split">
+    <div class="cal-col">
+      <div class="movebar hidden" id="moveBar">
+        <span id="moveText"></span>
+        <button class="movecancel" onclick="cancelMove()">取消</button>
+      </div>
+      <div class="wrow">
+        <div class="wl">日</div><div class="wl">一</div><div class="wl">二</div>
+        <div class="wl">三</div><div class="wl">四</div><div class="wl">五</div><div class="wl">六</div>
+      </div>
+      <div class="days" id="daysGrid"></div>
+    </div>
+    <div class="todo-col">
+      <div class="catlegend" id="catLegend"></div>
+      <div class="tdhead">
+        <div class="dateplate">
+          <span class="dnum" id="tdNum"></span>
+          <div class="dmeta">
+            <span class="dmonth" id="tdMonth"></span>
+            <span class="dweek" id="tdWeek"></span>
+          </div>
+        </div>
+        <span class="tdbadge" id="tdBadge"></span>
+      </div>
+      <div id="tdList"></div>
+      <div class="hint" id="opHint">點一下事項可編輯內容；長按事項可搬移到其他日期</div>
+      <div id="addWrap">
+        <button class="addbtn" onclick="openForm()">
+          <span class="pc"><i class="ti ti-plus"></i></span>新增代辦
+        </button>
+      </div>
+      <div class="fboxBackdrop hidden" id="fboxBackdrop" onclick="closeForm()"></div>
+      <div class="fbox hidden" id="fbox">
+        <div class="fhead">
+          <span class="ftit" id="formTitle">新增代辦事項</span>
+          <button class="fclose" onclick="closeForm()" aria-label="關閉"><i class="ti ti-x"></i></button>
+        </div>
+        <div class="fbody">
+          <div><label class="flabel">內容</label><input class="finput" id="fTitle" type="text" placeholder="輸入代辦內容…"></div>
+          <div><label class="flabel">日期</label><input class="finput" id="fDate" type="date"></div>
+          <div>
+            <label class="flabel">分類</label>
+            <div class="catgrid" id="catGrid"></div>
+          </div>
+        </div>
+        <div class="ffoot">
+          <button class="bcnl" onclick="closeForm()">取消</button>
+          <button class="bsav" id="bsav" onclick="saveItem()">儲存</button>
+          <span class="smsg" id="smsg"></span>
+        </div>
+      </div>
+      <div class="sbar" id="sbar"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAS='https://script.google.com/macros/s/AKfycbwjKQ9gsg9qmP31fEZPrGbQwUIMquHpwrQWyPLkXLoteSukA0WdpyCterM1Lx1df2H_rw/exec';
+const LSK='cal-todo-gas-v4';
+const CATS={
+  medical:{label:'醫療',icon:'ti-stethoscope',color:'var(--c-medical)'},
+  house:{label:'家務',icon:'ti-checklist',color:'var(--c-house)'},
+  work:{label:'工作',icon:'ti-briefcase',color:'var(--c-work)'},
+  family:{label:'家庭',icon:'ti-users',color:'var(--c-family)'},
+  other:{label:'其他',icon:'ti-tag',color:'var(--c-other)'}
+};
+const CATORDER=['medical','house','work','family','other'];
+// 舊版色票資料的相容對應（自動歸類，之後可於介面上重新調整分類）
+const LEGACY={rust:'family',moss:'house',dusk:'work',clay:'medical',plum:'other'};
+function normCat(c){ if(CATS[c]) return c; if(LEGACY[c]) return LEGACY[c]; return 'other'; }
+
+const MO=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+const DW=['日','一','二','三','四','五','六'];
+const td=new Date();
+let cur=new Date(td.getFullYear(),td.getMonth(),1);
+let sel=new Date(td.getFullYear(),td.getMonth(),td.getDate());
+let sc='family',items=[];
+let editingId=null,movingId=null;
+
+const p2=n=>n<10?'0'+n:''+n;
+const fd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());
+const addD=(d,n)=>{let r=new Date(d);r.setDate(r.getDate()+n);return r};
+const sD=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+
+function lsLoad(){try{const r=localStorage.getItem(LSK);if(r){items=JSON.parse(r);return true;}}catch(e){}return false;}
+function lsSave(){try{localStorage.setItem(LSK,JSON.stringify(items));}catch(e){}}
+
+function sbar(msg,cls){
+  const el=document.getElementById('sbar');
+  el.textContent=msg;el.className='sbar'+(cls?' '+cls:'');
+}
+
+function jsonp(params){
+  return new Promise((resolve,reject)=>{
+    const cbName='_cb'+Date.now()+'_'+Math.floor(Math.random()*9999);
+    const timer=setTimeout(()=>{delete window[cbName];reject(new Error('timeout'));},15000);
+    window[cbName]=function(data){clearTimeout(timer);delete window[cbName];resolve(data);};
+    const qs=Object.entries({...params,callback:cbName}).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&');
+    const s=document.createElement('script');
+    s.src=GAS+'?'+qs;
+    s.onerror=()=>{clearTimeout(timer);delete window[cbName];reject(new Error('script error'));};
+    document.head.appendChild(s);
+    setTimeout(()=>{if(s.parentNode)s.parentNode.removeChild(s);},20000);
+  });
+}
+
+function buildLegend(){
+  const wrap=document.getElementById('catLegend');wrap.innerHTML='';
+  CATORDER.forEach(k=>{
+    const c=CATS[k];
+    const el=document.createElement('span');el.className='catchip';
+    el.innerHTML=`<i class="ti ${c.icon}" style="color:${c.color}"></i>${c.label}`;
+    wrap.appendChild(el);
+  });
+}
+
+function buildCatGrid(){
+  const wrap=document.getElementById('catGrid');wrap.innerHTML='';
+  CATORDER.forEach(k=>{
+    const c=CATS[k];
+    const b=document.createElement('button');
+    b.type='button';b.className='catopt'+(k===sc?' on':'');b.dataset.c=k;
+    b.style.setProperty('--cc',c.color);
+    b.innerHTML=`<i class="ti ${c.icon}"></i>${c.label}`;
+    b.onclick=()=>pickCat(b);
+    wrap.appendChild(b);
+  });
+}
+
+async function load(){
+  lsLoad();normalizeAll();render();
+  sbar('連線 Google Sheet 中…');
+  try{
+    const res=await jsonp({action:'getAll'});
+    if(res.ok){
+      items=res.items.map(i=>({...i,done:i.done===true||i.done==='TRUE'||i.done==='true'}));
+      normalizeAll();
+      lsSave();render();sbar('');
+    }else{sbar('Sheet 讀取失敗：'+res.error,'err');}
+  }catch(e){sbar('網路錯誤，顯示本機快取','err');}
+  await importSeedOnce();
+}
+function normalizeAll(){items.forEach(e=>{e.color=normCat(e.color);});}
+
+function render(){
+  const yr=cur.getFullYear(),mo=cur.getMonth();
+  document.getElementById('calTitle').textContent=yr+'年 '+(mo+1)+'月';
+  const grid=document.getElementById('daysGrid');grid.innerHTML='';
+  const byDate={};
+  items.forEach(e=>{(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  const first=new Date(yr,mo,1),last=new Date(yr,mo+1,0),sd=first.getDay();
+  for(let i=0;i<sd;i++) grid.appendChild(mkCell(new Date(yr,mo,1-sd+i),true,byDate));
+  for(let d=1;d<=last.getDate();d++) grid.appendChild(mkCell(new Date(yr,mo,d),false,byDate));
+  const rem=(7-(last.getDay()+1)%7)%7;
+  for(let i=1;i<=rem;i++) grid.appendChild(mkCell(new Date(yr,mo+1,i),true,byDate));
+  renderTodos();
+  updateMoveBanner();
+  document.querySelector('.cal-col').classList.toggle('movemode',!!movingId);
+}
+
+function updateMoveBanner(){
+  const bar=document.getElementById('moveBar');
+  if(!movingId){bar.classList.add('hidden');return;}
+  const it=items.find(e=>e.id===movingId);
+  if(!it){movingId=null;bar.classList.add('hidden');return;}
+  document.getElementById('moveText').textContent='搬移「'+it.title+'」→ 點選要搬到的日期';
+  bar.classList.remove('hidden');
+}
+function startMove(id){
+  closeForm();
+  movingId=id;
+  if(navigator.vibrate)navigator.vibrate(15);
+  render();
+}
+function cancelMove(){
+  movingId=null;
+  render();
+}
+async function moveItemTo(ds){
+  const it=items.find(e=>e.id===movingId);
+  if(!it){cancelMove();return;}
+  if(it.date===ds){cancelMove();return;}
+  const id=movingId;
+  movingId=null;
+  const pts=ds.split('-');
+  sel=new Date(+pts[0],+pts[1]-1,+pts[2]);
+  cur=new Date(sel.getFullYear(),sel.getMonth(),1);
+  await pushUpdate(id,{date:ds});
+}
+
+async function pushUpdate(id,patch){
+  const it=items.find(e=>e.id===id);if(!it)return;
+  Object.assign(it,patch);
+  lsSave();render();
+  sbar('同步中…');
+  try{
+    const payload={action:'update',id};
+    Object.entries(patch).forEach(([k,v])=>{payload[k]=typeof v==='boolean'?String(v):v;});
+    const res=await jsonp(payload);
+    sbar(res&&res.ok?'已同步 ✓':'同步失敗：'+((res&&res.error)||''),(res&&res.ok)?'ok':'err');
+  }catch(e){sbar('網路錯誤，已更新本機資料','err');}
+  setTimeout(()=>sbar(''),3000);
+}
+
+function attachPress(el,id){
+  let timer=null,startX=0,startY=0,longFired=false;
+  const THRESH=10,HOLD=480;
+  const clear=()=>{if(timer){clearTimeout(timer);timer=null;}el.classList.remove('holding');};
+  el.addEventListener('pointerdown',e=>{
+    if(e.button&&e.button!==0)return;
+    longFired=false;startX=e.clientX;startY=e.clientY;
+    el.classList.add('holding');
+    timer=setTimeout(()=>{longFired=true;el.classList.remove('holding');startMove(id);},HOLD);
+  });
+  el.addEventListener('pointermove',e=>{
+    if(!timer)return;
+    if(Math.abs(e.clientX-startX)>THRESH||Math.abs(e.clientY-startY)>THRESH)clear();
+  });
+  el.addEventListener('pointerup',()=>{
+    const wasLong=longFired;
+    clear();
+    if(wasLong)return;
+    if(movingId){cancelMove();return;}
+    openEdit(id);
+  });
+  el.addEventListener('pointerleave',clear);
+  el.addEventListener('pointercancel',clear);
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+}
+
+function mkCell(dt,om,byDate){
+  const c=document.createElement('div');
+  c.className='dc'+(om?' om':'');
+  const dow=dt.getDay();
+  if(dow===0&&!om)c.classList.add('sun');
+  if(dow===6&&!om)c.classList.add('sat');
+  if(sD(dt,td))c.classList.add('tod');
+  if(sD(dt,sel))c.classList.add('sel');
+  const n=document.createElement('div');n.className='dn';n.textContent=dt.getDate();c.appendChild(n);
+  const ds=fd(dt);
+  const dayItems=byDate[ds];
+  if(dayItems&&dayItems.length){
+    const dr=document.createElement('div');dr.className='dotrow';
+    const cats=[...new Set(dayItems.map(e=>e.color))].slice(0,4);
+    cats.forEach(cat=>{
+      const allDone=dayItems.filter(e=>e.color===cat).every(e=>e.done);
+      const d=document.createElement('div');
+      d.className='dot'+(allDone?' faint':'');
+      d.style.background=CATS[cat]?CATS[cat].color:'var(--c-other)';
+      dr.appendChild(d);
+    });
+    c.appendChild(dr);
+  }
+  c.onclick=()=>{
+    if(movingId){moveItemTo(fd(dt));return;}
+    sel=new Date(dt);if(om){cur=new Date(dt.getFullYear(),dt.getMonth(),1);}closeForm();render();
+  };
+  return c;
+}
+
+function parseDS(ds){const p=ds.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+
+function renderTodos(){
+  const selDs=fd(sel);
+  document.getElementById('tdNum').textContent=sel.getDate();
+  document.getElementById('tdMonth').textContent=sel.getFullYear()+'年'+MO[sel.getMonth()];
+  document.getElementById('tdWeek').textContent='週'+DW[sel.getDay()];
+  const selList=items.filter(e=>e.date===selDs);
+  const openSel=selList.filter(e=>!e.done).length;
+  document.getElementById('tdBadge').textContent=selList.length?(openSel?openSel+'項待完成':'全部完成 ✓'):'無事項';
+
+  const yr=sel.getFullYear(),mo=sel.getMonth();
+  const monthItems=items.filter(e=>{const p=e.date.split('-');return +p[0]===yr&&(+p[1]-1)===mo;});
+  const el=document.getElementById('tdList');el.innerHTML='';
+  if(!monthItems.length){el.innerHTML='<div class="empty"><i class="ti ti-calendar-off ei"></i>本月尚無代辦事項</div>';return;}
+
+  const byDate={};
+  monthItems.forEach(e=>{(byDate[e.date]=byDate[e.date]||[]).push(e);});
+  let dateKeys=Object.keys(byDate).sort();
+  const idx=dateKeys.indexOf(selDs);
+  if(idx>-1)dateKeys.splice(idx,1);
+  dateKeys.unshift(selDs);
+
+  dateKeys.forEach(ds=>{
+    const dayItems=(byDate[ds]||[]).slice();
+    const dObj=parseDS(ds);
+    const isToday=sD(dObj,td);
+    const sec=document.createElement('div');sec.className='tsec'+(ds===selDs?' active':'');
+    const openCnt=dayItems.filter(e=>!e.done).length;
+    const label=(dObj.getMonth()+1)+'月'+dObj.getDate()+'日 週'+DW[dObj.getDay()]+(isToday?'・今天':'');
+    sec.innerHTML=`<div class="tsechead"><span class="lbl">${label}</span><span class="cnt">${dayItems.length?(openCnt?openCnt+' 項待辦':'已完成'):''}</span></div>`;
+    const body=document.createElement('div');body.className='tsecbody';
+    if(!dayItems.length){
+      body.innerHTML='<div class="empty small">尚無代辦事項</div>';
+    }else{
+      [...dayItems.filter(e=>!e.done),...dayItems.filter(e=>e.done)].forEach(e=>{
+        const c=CATS[e.color]||CATS.other;
+        const d=document.createElement('div');
+        d.className='titem'+(e.done?' done':'')+(e.id===movingId?' moving':'');
+        d.style.setProperty('--bar',c.color);
+        d.innerHTML=`<button class="tchk" onclick="toggleDone('${e.id}')" aria-label="${e.done?'標記未完成':'標記完成'}">${e.done?'<i class="ti ti-check"></i>':''}</button>
+<span class="ttxt"><i class="ti ${c.icon} tcicon" style="color:${c.color}"></i>${e.title}</span>
+<button class="tdel" onclick="delItem('${e.id}')" aria-label="刪除"><i class="ti ti-trash"></i></button>`;
+        body.appendChild(d);
+        attachPress(d.querySelector('.ttxt'),e.id);
+      });
+    }
+    sec.appendChild(body);
+    el.appendChild(sec);
+  });
+}
+
+async function toggleDone(id){
+  const it=items.find(e=>e.id===id);if(!it)return;
+  await pushUpdate(id,{done:!it.done});
+}
+
+async function delItem(id){
+  items=items.filter(e=>e.id!==id);lsSave();render();
+  try{await jsonp({action:'delete',id});}
+  catch(e){sbar('同步失敗','err');}
+}
+
+function openForm(){
+  if(movingId){movingId=null;render();}
+  editingId=null;
+  document.getElementById('formTitle').textContent='新增代辦事項';
+  document.getElementById('fTitle').value='';
+  document.getElementById('fDate').value=fd(sel);
+  document.getElementById('smsg').textContent='';
+  document.getElementById('bsav').disabled=false;
+  sc='family';
+  buildCatGrid();
+  document.getElementById('addWrap').style.display='none';
+  document.getElementById('fboxBackdrop').classList.remove('hidden');
+  document.getElementById('fbox').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('fTitle').focus(),50);
+}
+function openEdit(id){
+  const it=items.find(e=>e.id===id);if(!it)return;
+  editingId=id;
+  document.getElementById('formTitle').textContent='編輯代辦事項';
+  document.getElementById('fTitle').value=it.title;
+  document.getElementById('fDate').value=it.date;
+  document.getElementById('smsg').textContent='';
+  document.getElementById('bsav').disabled=false;
+  sc=it.color;
+  buildCatGrid();
+  document.getElementById('addWrap').style.display='none';
+  document.getElementById('fboxBackdrop').classList.remove('hidden');
+  document.getElementById('fbox').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('fTitle').focus(),50);
+}
+function closeForm(){
+  document.getElementById('fboxBackdrop').classList.add('hidden');
+  document.getElementById('fbox').classList.add('hidden');
+  document.getElementById('addWrap').style.display='';
+  editingId=null;
+}
+function pickCat(el){
+  document.querySelectorAll('.catopt').forEach(o=>o.classList.remove('on'));
+  el.classList.add('on');sc=el.dataset.c;
+}
+
+async function saveItem(){
+  const title=document.getElementById('fTitle').value.trim();
+  if(!title){document.getElementById('fTitle').focus();document.getElementById('smsg').textContent='請填內容';return;}
+  const date=document.getElementById('fDate').value||fd(sel);
+  const pts=date.split('-');
+  sel=new Date(+pts[0],+pts[1]-1,+pts[2]);
+  cur=new Date(sel.getFullYear(),sel.getMonth(),1);
+
+  if(editingId){
+    const id=editingId;
+    closeForm();
+    await pushUpdate(id,{title,date,color:sc});
+    return;
+  }
+
+  const id=String(Date.now());
+  items.push({id,title,date,done:false,color:sc});
+  lsSave();
+  closeForm();render();
+  sbar('寫入 Sheet 中…');
+  document.getElementById('bsav').disabled=true;
+  try{
+    const res=await jsonp({action:'save',id,title,date,done:'false',color:sc});
+    sbar(res.ok?'已同步至 Google Sheet ✓':'寫入失敗：'+(res.error||''),res.ok?'ok':'err');
+  }catch(e){sbar('網路錯誤，資料暫存本機','err');}
+  setTimeout(()=>sbar(''),3500);
+}
+
+function chM(d){cur=new Date(cur.getFullYear(),cur.getMonth()+d,1);closeForm();render();}
+function goToday(){cur=new Date(td.getFullYear(),td.getMonth(),1);sel=new Date(td.getFullYear(),td.getMonth(),td.getDate());closeForm();render();}
+
+/* 從團練/音樂節行程表匯入（假設年份為2026） */
+const SEED_ITEMS=[
+  {date:'2026-09-05',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-12',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-19',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-09-25',title:'團練（連假調整）09:00–12:00・中秋連假',color:'work'},
+  {date:'2026-10-03',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-17',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-31',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-10-09',title:'團練（連假調整）09:00–12:00・雙十連假',color:'work'},
+  {date:'2026-10-24',title:'團練（連假調整）09:00–12:00・光復節連假',color:'work'},
+  {date:'2026-11-07',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-14',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-21',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-11-28',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-12-05',title:'團練 13:30–16:30',color:'work'},
+  {date:'2026-12-06',title:'大合奏（全鎮中/小學預彩排）',color:'work'},
+  {date:'2026-12-11',title:'音樂節彩排（時間未定）',color:'work'},
+  {date:'2026-12-12',title:'布袋音樂節 11:00–20:30（暫定）',color:'work'},
+  {date:'2026-12-13',title:'布袋音樂節 09:00–19:00',color:'work'}
+];
+async function importSeedOnce(){
+  const FLAG='seedImported_v1';
+  if(localStorage.getItem(FLAG))return;
+  const toAdd=SEED_ITEMS.filter(s=>!items.some(e=>e.date===s.date&&e.title===s.title));
+  if(!toAdd.length){localStorage.setItem(FLAG,'1');return;}
+  sbar('匯入團練與音樂節行程中…');
+  for(const s of toAdd){
+    const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
+    items.push({id,title:s.title,date:s.date,done:false,color:s.color});
+    lsSave();
+    try{await jsonp({action:'save',id,title:s.title,date:s.date,done:'false',color:s.color});}
+    catch(e){/* 略過失敗項目，之後可手動重新新增 */}
+  }
+  localStorage.setItem(FLAG,'1');
+  render();
+  sbar('已匯入 '+toAdd.length+' 筆行程 ✓','ok');
+  setTimeout(()=>sbar(''),4000);
+}
+
+buildLegend();
+load();
+</script>
+</body>
+</html>
