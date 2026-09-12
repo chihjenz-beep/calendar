@@ -162,6 +162,11 @@ body{
     <div class="mast-right">
       <button class="tpill" onclick="goToday()">今天</button>
       <div class="nav-grp">
+        <button class="nbtn" onclick="exportData()" aria-label="匯出"><i class="ti ti-download"></i></button>
+        <button class="nbtn" onclick="triggerImport()" aria-label="匯入"><i class="ti ti-upload"></i></button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="handleImportFile(event)">
+      </div>
+      <div class="nav-grp">
         <button class="nbtn" onclick="chM(-1)" aria-label="上個月"><i class="ti ti-chevron-left"></i></button>
         <button class="nbtn" onclick="chM(1)" aria-label="下個月"><i class="ti ti-chevron-right"></i></button>
       </div>
@@ -555,6 +560,60 @@ async function saveItem(){
     sbar(res.ok?'已同步至 Google Sheet ✓':'寫入失敗：'+(res.error||''),res.ok?'ok':'err');
   }catch(e){sbar('網路錯誤，資料暫存本機','err');}
   setTimeout(()=>sbar(''),3500);
+}
+
+function exportData(){
+  if(!items.length){sbar('目前沒有可匯出的資料','err');setTimeout(()=>sbar(''),3000);return;}
+  const data=JSON.stringify(items,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='代辦匯出_'+fd(new Date())+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  sbar('已匯出 '+items.length+' 筆事項 ✓','ok');
+  setTimeout(()=>sbar(''),3000);
+}
+
+function triggerImport(){
+  if(movingId){cancelMove();}
+  document.getElementById('importFile').click();
+}
+
+async function handleImportFile(ev){
+  const file=ev.target.files[0];
+  ev.target.value='';
+  if(!file)return;
+  let data;
+  try{
+    const text=await file.text();
+    data=JSON.parse(text);
+    if(!Array.isArray(data))throw new Error('not array');
+  }catch(e){
+    sbar('匯入失敗：檔案格式不正確','err');
+    setTimeout(()=>sbar(''),4000);
+    return;
+  }
+  sbar('匯入中…');
+  let added=0,skipped=0;
+  for(const raw of data){
+    if(!raw||!raw.title||!raw.date)continue;
+    const date=String(raw.date).slice(0,10);
+    const title=String(raw.title);
+    const color=normCat(raw.color);
+    const done=raw.done===true||raw.done==='TRUE'||raw.done==='true';
+    if(items.some(e=>e.date===date&&e.title===title)){skipped++;continue;}
+    const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
+    items.push({id,title,date,done,color});
+    lsSave();
+    try{await jsonp({action:'save',id,title,date,done:String(done),color});}
+    catch(e){/* 同步失敗時保留在本機，稍後可重試 */}
+    added++;
+  }
+  render();
+  sbar('已匯入 '+added+' 筆'+(skipped?'（略過 '+skipped+' 筆重複）':'')+' ✓','ok');
+  setTimeout(()=>sbar(''),4000);
 }
 
 function chM(d){cur=new Date(cur.getFullYear(),cur.getMonth()+d,1);closeForm();render();}
