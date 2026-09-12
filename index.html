@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -164,7 +165,7 @@ body{
       <div class="nav-grp">
         <button class="nbtn" onclick="exportData()" aria-label="匯出"><i class="ti ti-download"></i></button>
         <button class="nbtn" onclick="triggerImport()" aria-label="匯入"><i class="ti ti-upload"></i></button>
-        <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="handleImportFile(event)">
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(event)">
       </div>
       <div class="nav-grp">
         <button class="nbtn" onclick="chM(-1)" aria-label="上個月"><i class="ti ti-chevron-left"></i></button>
@@ -562,16 +563,21 @@ async function saveItem(){
   setTimeout(()=>sbar(''),3500);
 }
 
+const LBL2CODE={};CATORDER.forEach(k=>{LBL2CODE[CATS[k].label]=k;});
+
 function exportData(){
   if(!items.length){sbar('目前沒有可匯出的資料','err');setTimeout(()=>sbar(''),3000);return;}
-  const data=JSON.stringify(items,null,2);
-  const blob=new Blob([data],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  a.download='代辦匯出_'+fd(new Date())+'.json';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const rows=items.slice().sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0).map(e=>({
+    日期:e.date,
+    內容:e.title,
+    分類:(CATS[e.color]||CATS.other).label,
+    完成:e.done?'是':'否'
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows,{header:['日期','內容','分類','完成']});
+  ws['!cols']=[{wch:12},{wch:36},{wch:8},{wch:6}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'代辦事項');
+  XLSX.writeFile(wb,'代辦匯出_'+fd(new Date())+'.xlsx');
   sbar('已匯出 '+items.length+' 筆事項 ✓','ok');
   setTimeout(()=>sbar(''),3000);
 }
@@ -581,29 +587,53 @@ function triggerImport(){
   document.getElementById('importFile').click();
 }
 
+function toDateStr(v){
+  if(v instanceof Date)return v.getFullYear()+'-'+p2(v.getMonth()+1)+'-'+p2(v.getDate());
+  const s=String(v).trim();
+  const m=s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if(m)return m[1]+'-'+p2(+m[2])+'-'+p2(+m[3]);
+  return s;
+}
+function toCat(v){
+  const s=String(v).trim();
+  if(LBL2CODE[s])return LBL2CODE[s];
+  return normCat(s);
+}
+function toDone(v){
+  if(typeof v==='boolean')return v;
+  const s=String(v).trim().toLowerCase();
+  return s==='是'||s==='true'||s==='1'||s==='yes'||s==='v'||s==='✓';
+}
+
 async function handleImportFile(ev){
   const file=ev.target.files[0];
   ev.target.value='';
   if(!file)return;
-  let data;
+  sbar('讀取檔案中…');
+  let rows;
   try{
-    const text=await file.text();
-    data=JSON.parse(text);
-    if(!Array.isArray(data))throw new Error('not array');
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array',cellDates:true});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    rows=XLSX.utils.sheet_to_json(ws,{defval:''});
   }catch(e){
     sbar('匯入失敗：檔案格式不正確','err');
     setTimeout(()=>sbar(''),4000);
     return;
   }
   sbar('匯入中…');
-  let added=0,skipped=0;
-  for(const raw of data){
-    if(!raw||!raw.title||!raw.date)continue;
-    const date=String(raw.date).slice(0,10);
-    const title=String(raw.title);
-    const color=normCat(raw.color);
-    const done=raw.done===true||raw.done==='TRUE'||raw.done==='true';
-    if(items.some(e=>e.date===date&&e.title===title)){skipped++;continue;}
+  let added=0,dup=0,invalid=0;
+  for(const row of rows){
+    const rawTitle=row['內容']??row['title']??row['Title']??'';
+    const rawDate=row['日期']??row['date']??row['Date']??'';
+    const rawCat=row['分類']??row['category']??row['Category']??'other';
+    const rawDone=row['完成']??row['done']??row['Done']??'';
+    const title=String(rawTitle).trim();
+    const date=toDateStr(rawDate);
+    if(!title||!/^\d{4}-\d{2}-\d{2}$/.test(date)){invalid++;continue;}
+    const color=toCat(rawCat);
+    const done=toDone(rawDone);
+    if(items.some(e=>e.date===date&&e.title===title)){dup++;continue;}
     const id=String(Date.now())+'-'+Math.random().toString(36).slice(2,7);
     items.push({id,title,date,done,color});
     lsSave();
@@ -612,7 +642,12 @@ async function handleImportFile(ev){
     added++;
   }
   render();
-  sbar('已匯入 '+added+' 筆'+(skipped?'（略過 '+skipped+' 筆重複）':'')+' ✓','ok');
+  let msg='已匯入 '+added+' 筆';
+  const notes=[];
+  if(dup)notes.push('略過 '+dup+' 筆重複');
+  if(invalid)notes.push('略過 '+invalid+' 筆格式錯誤');
+  if(notes.length)msg+='（'+notes.join('、')+'）';
+  sbar(msg+' ✓','ok');
   setTimeout(()=>sbar(''),4000);
 }
 
